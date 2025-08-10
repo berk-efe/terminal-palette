@@ -63,13 +63,13 @@ impl App {
                 self.toggle_lock(num);
             }
 
-            (KeyCode::Char(' '), _) => self.generate_colors(),
+            (KeyCode::Char(' '), _) => self.generate_analogous(),
 
             _ => {}
         }
     }
 
-    fn generate_colors(&mut self) {
+    fn generate_analogous(&mut self) {
         fn generate_random_color(block: &mut ColorBlock) {
             let mut rng = rand::rng();
             block.red = rng.random_range(0..255);
@@ -77,11 +77,38 @@ impl App {
             block.blue = rng.random_range(0..255);
         }
 
-        self.color_blocks
+        let mut rng = rand::rng();
+
+        let mut last_red: u8 = 0;
+        let mut last_green: u8 = 0;
+        let mut last_blue: u8 = 0;
+
+        for (i, block) in self.color_blocks.iter_mut().enumerate() {
+            if let Some(color_block) = block {
+                if i == 0 {
+                    generate_random_color(color_block);
+                    last_red = color_block.red;
+                    last_green = color_block.green;
+                    last_blue = color_block.blue;
+                } else {
+                    let randomness: u8 = rng.random_range(1..16);
+                    color_block.red =
+                        (last_red as u16 + i as u16 * randomness as u16).clamp(1, 255) as u8;
+                    color_block.green =
+                        (last_green as u16 + i as u16 * randomness as u16).clamp(1, 255) as u8;
+                    color_block.blue =
+                        (last_blue as u16 + i as u16 * randomness as u16).clamp(1, 255) as u8;
+                }
+            }
+        }
+    }
+
+    fn generate_colors(&mut self) {
+        let current_colors: Vec<&mut ColorBlock> = self
+            .color_blocks
             .iter_mut()
-            .filter(|block| block.is_some())
-            .filter(|block| !block.unwrap().locked)
-            .for_each(|block| generate_random_color(block.as_mut().unwrap()));
+            .filter_map(|block| block.as_mut())
+            .collect();
     }
 
     fn exit(&mut self) {
