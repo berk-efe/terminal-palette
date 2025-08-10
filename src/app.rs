@@ -1,5 +1,7 @@
 use std::io;
 
+use rand::Rng;
+
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 use ratatui::{
     DefaultTerminal, Frame,
@@ -56,18 +58,30 @@ impl App {
             (KeyCode::Left, _) => self.decrement_counter(),
             (KeyCode::Right, _) => self.increment_counter(),
 
-            (KeyCode::Char('1'), KeyModifiers::ALT) => self.toggle_lock(1),
-            (KeyCode::Char('2'), KeyModifiers::ALT) => self.toggle_lock(2),
-            (KeyCode::Char('3'), KeyModifiers::ALT) => self.toggle_lock(3),
-            (KeyCode::Char('4'), KeyModifiers::ALT) => self.toggle_lock(4),
-            (KeyCode::Char('5'), KeyModifiers::ALT) => self.toggle_lock(5),
-            (KeyCode::Char('6'), KeyModifiers::ALT) => self.toggle_lock(6),
-            (KeyCode::Char('7'), KeyModifiers::ALT) => self.toggle_lock(7),
-            (KeyCode::Char('8'), KeyModifiers::ALT) => self.toggle_lock(8),
-            (KeyCode::Char('9'), KeyModifiers::ALT) => self.toggle_lock(9),
+            (KeyCode::Char(c), KeyModifiers::ALT) if ('1'..='9').contains(&c) => {
+                let num = c.to_digit(10).unwrap() as usize;
+                self.toggle_lock(num);
+            }
+
+            (KeyCode::Char(' '), _) => self.generate_colors(),
 
             _ => {}
         }
+    }
+
+    fn generate_colors(&mut self) {
+        fn generate_random_color(block: &mut ColorBlock) {
+            let mut rng = rand::rng();
+            block.red = rng.random_range(0..255);
+            block.green = rng.random_range(0..255);
+            block.blue = rng.random_range(0..255);
+        }
+
+        self.color_blocks
+            .iter_mut()
+            .filter(|block| block.is_some())
+            .filter(|block| !block.unwrap().locked)
+            .for_each(|block| generate_random_color(block.as_mut().unwrap()));
     }
 
     fn exit(&mut self) {

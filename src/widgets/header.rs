@@ -1,9 +1,9 @@
 use ratatui::{
     buffer::Buffer,
-    style::Stylize,
+    style::{Color, Stylize},
     symbols::border,
     text::Line,
-    widgets::{Block, Paragraph, Widget},
+    widgets::{Block, Padding, Paragraph, Widget},
 };
 
 pub struct Header {
@@ -20,7 +20,9 @@ impl Widget for &Header {
     fn render(self, area: ratatui::prelude::Rect, buf: &mut Buffer) {
         let title = Line::from(self.title.bold());
 
-        let block = Block::bordered().border_set(border::THICK);
+        let block = Block::default()
+            .bg(Color::Rgb(36, 51, 66))
+            .padding(Padding::new(0, 0, 1, 1));
 
         Paragraph::new(title)
             .centered()
