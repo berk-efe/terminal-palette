@@ -1,6 +1,5 @@
 use ratatui::{
     buffer::Buffer,
-    crossterm::style::style,
     layout::{Alignment, Constraint, Direction, Layout, Rect},
     style::{Color, Stylize},
     symbols::border,

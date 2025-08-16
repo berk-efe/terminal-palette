@@ -79,25 +79,74 @@ impl App {
 
         let mut rng = rand::rng();
 
+        let locked_blocks: Vec<Option<ColorBlock>> = self
+            .color_blocks
+            .iter()
+            .filter(|block| block.is_some())
+            .filter(|block| block.unwrap().locked)
+            .cloned()
+            .collect();
+
         let mut last_red: u8 = 0;
         let mut last_green: u8 = 0;
         let mut last_blue: u8 = 0;
 
-        for (i, block) in self.color_blocks.iter_mut().enumerate() {
-            if let Some(color_block) = block {
-                if i == 0 {
-                    generate_random_color(color_block);
-                    last_red = color_block.red;
-                    last_green = color_block.green;
-                    last_blue = color_block.blue;
-                } else {
-                    let randomness: u8 = rng.random_range(1..16);
-                    color_block.red =
-                        (last_red as u16 + i as u16 * randomness as u16).clamp(1, 255) as u8;
-                    color_block.green =
-                        (last_green as u16 + i as u16 * randomness as u16).clamp(1, 255) as u8;
-                    color_block.blue =
-                        (last_blue as u16 + i as u16 * randomness as u16).clamp(1, 255) as u8;
+        let rand_rate = 20;
+
+        if locked_blocks.len() > 0 {
+            let mut _red: u8 = 0;
+            let mut _green: u8 = 0;
+            let mut _blue: u8 = 0;
+
+            for block in locked_blocks.iter() {
+                let block = block.unwrap();
+                _red = (_red as u16 + block.red as u16).clamp(1, 255) as u8;
+                _green = (_green as u16 + block.green as u16).clamp(1, 255) as u8;
+                _blue = (_blue as u16 + block.blue as u16).clamp(1, 255) as u8;
+            }
+
+            last_red = _red / locked_blocks.len() as u8;
+            last_green = _green / locked_blocks.len() as u8;
+            last_blue = _blue / locked_blocks.len() as u8;
+
+            for block in self.color_blocks.iter_mut() {
+                if let Some(color_block) = block {
+                    if !color_block.locked {
+                        let randomness: i8 = rng.random_range(-rand_rate..rand_rate);
+                        color_block.red =
+                            (last_red as i16 + randomness as i16).clamp(15, 245) as u8;
+                        last_red = color_block.red;
+
+                        color_block.green =
+                            (last_green as i16 + randomness as i16).clamp(15, 245) as u8;
+                        last_green = color_block.green;
+
+                        color_block.blue =
+                            (last_blue as i16 + randomness as i16).clamp(15, 245) as u8;
+                        last_blue = color_block.blue;
+                    }
+                }
+            }
+        } else {
+            for (i, block) in self.color_blocks.iter_mut().enumerate() {
+                if let Some(color_block) = block {
+                    if i == 0 {
+                        generate_random_color(color_block);
+                        last_red = color_block.red;
+                        last_green = color_block.green;
+                        last_blue = color_block.blue;
+                    } else {
+                        let randomness: i8 = rng.random_range(-rand_rate..rand_rate);
+                        color_block.red =
+                            (last_red as i16 + randomness as i16).clamp(15, 245) as u8;
+                        last_red = color_block.red;
+                        color_block.green =
+                            (last_green as i16 + randomness as i16).clamp(15, 245) as u8;
+                        last_green = color_block.green;
+                        color_block.blue =
+                            (last_blue as i16 + randomness as i16).clamp(15, 245) as u8;
+                        last_blue = color_block.blue;
+                    }
                 }
             }
         }
@@ -148,7 +197,7 @@ impl Default for App {
         Self {
             counter: 0,
 
-            title: " Color Palette ",
+            title: " Color Palette!!!!! ",
             color_block_count: color_block_count,
             selected_block_id: 0,
 
