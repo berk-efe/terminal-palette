@@ -6,17 +6,22 @@ use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifier
 use ratatui::{
     DefaultTerminal, Frame,
     buffer::Buffer,
+    crossterm::style::Color,
     layout::{Constraint, Direction, Layout, Rect},
-    widgets::Widget,
+    style::{Style, Stylize},
+    widgets::{Block, Padding, Widget},
 };
 
 use crate::widgets::content::{ColorBlock, MainContent};
 use crate::widgets::header::Header;
+use crate::widgets::popup::Popup;
 use crate::widgets::status_bar::StatusBar;
 
 #[derive(Debug)]
 pub struct App {
     pub counter: i8,
+
+    pub on_settings: bool,
 
     pub title: &'static str,
     pub color_block_count: usize,
@@ -152,14 +157,6 @@ impl App {
         }
     }
 
-    fn generate_colors(&mut self) {
-        let current_colors: Vec<&mut ColorBlock> = self
-            .color_blocks
-            .iter_mut()
-            .filter_map(|block| block.as_mut())
-            .collect();
-    }
-
     fn exit(&mut self) {
         self.exit = true;
     }
@@ -197,6 +194,8 @@ impl Default for App {
         Self {
             counter: 0,
 
+            on_settings: false,
+
             title: " Color Palette!!!!! ",
             color_block_count: color_block_count,
             selected_block_id: 0,
@@ -232,5 +231,14 @@ impl Widget for &App {
 
         let status_bar = StatusBar::default();
         status_bar.render(footer_area, buf);
+
+        // SETTINGS POPUP
+        let popup = Popup::default()
+            .content("Hello world")
+            .style(Style::new().yellow())
+            .title("Popup!")
+            .title_style(Style::new().white().bold())
+            .border_style(Style::new().red());
+        popup.render(popup, buf);
     }
 }
