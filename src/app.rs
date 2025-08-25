@@ -6,10 +6,9 @@ use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifier
 use ratatui::{
     DefaultTerminal, Frame,
     buffer::Buffer,
-    crossterm::style::Color,
     layout::{Constraint, Direction, Layout, Rect},
     style::{Style, Stylize},
-    widgets::{Block, Padding, Widget},
+    widgets::Widget,
 };
 
 use crate::widgets::content::{ColorBlock, MainContent};
@@ -17,11 +16,17 @@ use crate::widgets::header::Header;
 use crate::widgets::popup::Popup;
 use crate::widgets::status_bar::StatusBar;
 
+#[derive(Debug, PartialEq)]
+pub enum CurrentPage {
+    Main,
+    Settings,
+}
+
 #[derive(Debug)]
 pub struct App {
     pub counter: i8,
 
-    pub on_settings: bool,
+    pub current_page: CurrentPage,
 
     pub title: &'static str,
     pub color_block_count: usize,
@@ -58,19 +63,29 @@ impl App {
     }
 
     fn handle_key_event(&mut self, key_event: KeyEvent) {
-        match (key_event.code, key_event.modifiers) {
-            (KeyCode::Char('q'), _) => self.exit(),
-            (KeyCode::Left, _) => self.decrement_counter(),
-            (KeyCode::Right, _) => self.increment_counter(),
+        match self.current_page {
+            CurrentPage::Main => match (key_event.code, key_event.modifiers) {
+                (KeyCode::Char('q'), _) => self.exit(),
+                (KeyCode::Left, _) => self.decrement_counter(),
+                (KeyCode::Right, _) => self.increment_counter(),
 
-            (KeyCode::Char(c), KeyModifiers::ALT) if ('1'..='9').contains(&c) => {
-                let num = c.to_digit(10).unwrap() as usize;
-                self.toggle_lock(num);
-            }
+                (KeyCode::Char('c'), _) => self.current_page = CurrentPage::Settings,
 
-            (KeyCode::Char(' '), _) => self.generate_analogous(),
+                (KeyCode::Char(c), KeyModifiers::ALT) if ('1'..='9').contains(&c) => {
+                    let num = c.to_digit(10).unwrap() as usize;
+                    self.toggle_lock(num);
+                }
 
-            _ => {}
+                (KeyCode::Char(' '), _) => self.generate_analogous(),
+
+                _ => {}
+            },
+            CurrentPage::Settings => match (key_event.code, key_event.modifiers) {
+                (KeyCode::Char('c'), _) | (KeyCode::Char('q'), _) => {
+                    self.current_page = CurrentPage::Main
+                }
+                _ => {}
+            },
         }
     }
 
@@ -194,7 +209,7 @@ impl Default for App {
         Self {
             counter: 0,
 
-            on_settings: false,
+            current_page: CurrentPage::Main,
 
             title: " Color Palette!!!!! ",
             color_block_count: color_block_count,
@@ -233,12 +248,21 @@ impl Widget for &App {
         status_bar.render(footer_area, buf);
 
         // SETTINGS POPUP
-        let popup = Popup::default()
-            .content("Hello world")
-            .style(Style::new().yellow())
-            .title("Popup!")
-            .title_style(Style::new().white().bold())
-            .border_style(Style::new().red());
-        popup.render(popup, buf);
+        let popup_area = Rect {
+            x: area.width / 4,
+            y: area.height / 3,
+            width: area.width / 2,
+            height: area.height / 3,
+        };
+
+        if self.current_page == CurrentPage::Settings {
+            let popup = Popup::default()
+                .content("Hello world")
+                .style(Style::new().yellow())
+                .title("Popup!")
+                .title_style(Style::new().white().bold())
+                .border_style(Style::new().red());
+            popup.render(popup_area, buf);
+        }
     }
 }
