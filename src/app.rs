@@ -8,24 +8,24 @@ use ratatui::{
     buffer::Buffer,
     layout::{Constraint, Direction, Layout, Rect},
     style::{Style, Stylize},
-    widgets::Widget,
+    widgets::{Block, BorderType, Borders, List, ListItem, ListState, StatefulWidget, Widget},
 };
 
 use crate::widgets::content::{ColorBlock, MainContent};
 use crate::widgets::header::Header;
-use crate::widgets::popup::Popup;
 use crate::widgets::status_bar::StatusBar;
 
 #[derive(Debug, PartialEq)]
 pub enum CurrentPage {
     Main,
-    Settings,
+    TheorySelector,
 }
 
 #[derive(Debug)]
 pub struct App {
     pub counter: i8,
 
+    pub theory_selector_state: ListState,
     pub current_page: CurrentPage,
 
     pub title: &'static str,
@@ -48,8 +48,27 @@ impl App {
         Ok(())
     }
 
-    fn draw(&self, frame: &mut Frame) {
-        frame.render_widget(self, frame.area());
+    fn draw(&mut self, frame: &mut Frame) {
+        frame.render_widget(&*self, frame.area());
+
+        // SETTINGS POPUP
+        let popup_area = Rect {
+            x: frame.area().width / 4,
+            y: frame.area().height / 3,
+            width: frame.area().width / 2,
+            height: frame.area().height / 3,
+        };
+
+        let popup_list = List::new(vec![ListItem::new("Item1"), ListItem::new("Item2")])
+            .block(
+                Block::default()
+                    .title(" Select Theory ")
+                    .borders(Borders::ALL)
+                    .border_type(BorderType::Plain),
+            )
+            .highlight_symbol(">");
+
+        frame.render_stateful_widget(popup_list, popup_area, &mut self.theory_selector_state);
     }
 
     fn handle_events(&mut self) -> io::Result<()> {
@@ -69,7 +88,7 @@ impl App {
                 (KeyCode::Left, _) => self.decrement_counter(),
                 (KeyCode::Right, _) => self.increment_counter(),
 
-                (KeyCode::Char('c'), _) => self.current_page = CurrentPage::Settings,
+                (KeyCode::Char('c'), _) => self.current_page = CurrentPage::TheorySelector,
 
                 (KeyCode::Char(c), KeyModifiers::ALT) if ('1'..='9').contains(&c) => {
                     let num = c.to_digit(10).unwrap() as usize;
@@ -80,7 +99,7 @@ impl App {
 
                 _ => {}
             },
-            CurrentPage::Settings => match (key_event.code, key_event.modifiers) {
+            CurrentPage::TheorySelector => match (key_event.code, key_event.modifiers) {
                 (KeyCode::Char('c'), _) | (KeyCode::Char('q'), _) => {
                     self.current_page = CurrentPage::Main
                 }
@@ -209,6 +228,7 @@ impl Default for App {
         Self {
             counter: 0,
 
+            theory_selector_state: ListState::default(),
             current_page: CurrentPage::Main,
 
             title: " Color Palette!!!!! ",
@@ -246,23 +266,5 @@ impl Widget for &App {
 
         let status_bar = StatusBar::default();
         status_bar.render(footer_area, buf);
-
-        // SETTINGS POPUP
-        let popup_area = Rect {
-            x: area.width / 4,
-            y: area.height / 3,
-            width: area.width / 2,
-            height: area.height / 3,
-        };
-
-        if self.current_page == CurrentPage::Settings {
-            let popup = Popup::default()
-                .content("Hello world")
-                .style(Style::new().yellow())
-                .title("Popup!")
-                .title_style(Style::new().white().bold())
-                .border_style(Style::new().red());
-            popup.render(popup_area, buf);
-        }
     }
 }
