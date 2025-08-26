@@ -7,9 +7,11 @@ use ratatui::{
     DefaultTerminal, Frame,
     buffer::Buffer,
     layout::{Constraint, Direction, Layout, Rect},
-    style::{Style, Stylize},
-    widgets::{Block, BorderType, Borders, List, ListItem, ListState, StatefulWidget, Widget},
+    widgets::{Block, BorderType, Borders, Clear, List, ListItem, ListState, Widget},
 };
+
+use strum::IntoEnumIterator;
+use strum_macros::EnumIter;
 
 use crate::widgets::content::{ColorBlock, MainContent};
 use crate::widgets::header::Header;
@@ -21,12 +23,19 @@ pub enum CurrentPage {
     TheorySelector,
 }
 
+#[derive(Copy, Clone, Debug, PartialEq, EnumIter)]
+pub enum ColorTheories {
+    Analogous,
+    Complementary,
+}
+
 #[derive(Debug)]
 pub struct App {
     pub counter: i8,
 
     pub theory_selector_state: ListState,
     pub current_page: CurrentPage,
+    pub current_color_theory: ColorTheories,
 
     pub title: &'static str,
     pub color_block_count: usize,
@@ -51,24 +60,31 @@ impl App {
     fn draw(&mut self, frame: &mut Frame) {
         frame.render_widget(&*self, frame.area());
 
-        // SETTINGS POPUP
-        let popup_area = Rect {
-            x: frame.area().width / 4,
-            y: frame.area().height / 3,
-            width: frame.area().width / 2,
-            height: frame.area().height / 3,
-        };
+        if self.current_page == CurrentPage::TheorySelector {
+            // SETTINGS POPUP
+            let popup_area = Rect {
+                x: frame.area().width / 4,
+                y: frame.area().height / 3,
+                width: frame.area().width / 2,
+                height: frame.area().height / 3,
+            };
 
-        let popup_list = List::new(vec![ListItem::new("Item1"), ListItem::new("Item2")])
-            .block(
-                Block::default()
-                    .title(" Select Theory ")
-                    .borders(Borders::ALL)
-                    .border_type(BorderType::Plain),
-            )
-            .highlight_symbol(">");
+            let popup_list_items: Vec<ListItem> = ColorTheories::iter()
+                .map(|t| ListItem::new(format!("{:?}", t)))
+                .collect();
 
-        frame.render_stateful_widget(popup_list, popup_area, &mut self.theory_selector_state);
+            let popup_list = List::new(popup_list_items)
+                .block(
+                    Block::default()
+                        .title(" Select Theory ")
+                        .borders(Borders::ALL)
+                        .border_type(BorderType::Plain),
+                )
+                .highlight_symbol(">");
+
+            frame.render_widget(Clear, popup_area);
+            frame.render_stateful_widget(popup_list, popup_area, &mut self.theory_selector_state);
+        }
     }
 
     fn handle_events(&mut self) -> io::Result<()> {
@@ -88,14 +104,20 @@ impl App {
                 (KeyCode::Left, _) => self.decrement_counter(),
                 (KeyCode::Right, _) => self.increment_counter(),
 
-                (KeyCode::Char('c'), _) => self.current_page = CurrentPage::TheorySelector,
+                (KeyCode::Char('c'), _) => {
+                    self.theory_selector_state.select_first();
+                    self.current_page = CurrentPage::TheorySelector
+                }
 
                 (KeyCode::Char(c), KeyModifiers::ALT) if ('1'..='9').contains(&c) => {
                     let num = c.to_digit(10).unwrap() as usize;
                     self.toggle_lock(num);
                 }
 
-                (KeyCode::Char(' '), _) => self.generate_analogous(),
+                (KeyCode::Char(' '), _) => match self.current_color_theory {
+                    ColorTheories::Analogous => self.generate_analogous(),
+                    ColorTheories::Complementary => todo!(),
+                },
 
                 _ => {}
             },
@@ -103,6 +125,19 @@ impl App {
                 (KeyCode::Char('c'), _) | (KeyCode::Char('q'), _) => {
                     self.current_page = CurrentPage::Main
                 }
+
+                (KeyCode::Left, _) => self.theory_selector_state.select_first(),
+                (KeyCode::Right, _) => self.theory_selector_state.select_last(),
+                (KeyCode::Up, _) => self.theory_selector_state.select_previous(),
+                (KeyCode::Down, _) => self.theory_selector_state.select_next(),
+
+                (KeyCode::Enter, _) | (KeyCode::Char(' '), _) => {
+                    if let Some(selected) = self.theory_selector_state.selected() {
+                        let theories: Vec<ColorTheories> = ColorTheories::iter().collect();
+                        self.current_color_theory = theories[selected];
+                    }
+                }
+
                 _ => {}
             },
         }
@@ -230,6 +265,7 @@ impl Default for App {
 
             theory_selector_state: ListState::default(),
             current_page: CurrentPage::Main,
+            current_color_theory: ColorTheories::Analogous,
 
             title: " Color Palette!!!!! ",
             color_block_count: color_block_count,
