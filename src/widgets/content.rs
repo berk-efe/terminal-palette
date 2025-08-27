@@ -7,36 +7,48 @@ use ratatui::{
     widgets::{Block, Borders, Padding, Paragraph, Widget},
 };
 
+use palette::{FromColor, Hsv, RgbHue, Srgb};
+
 #[derive(Clone, Copy, Debug)]
 pub struct ColorBlock {
     pub block_id: usize,
 
-    pub red: u8,
-    pub green: u8,
-    pub blue: u8,
+    pub hsv: Hsv,
 
     pub selected: bool,
     pub locked: bool,
 }
 
 impl ColorBlock {
-    pub fn new(block_id: usize, red: u8, green: u8, blue: u8) -> Self {
+    pub fn new(block_id: usize, hue: f32, sat: f32, val: f32) -> Self {
+        let hue = RgbHue::from_degrees(hue);
+        let hsv: Hsv = Hsv::new(hue, sat, val);
+
         Self {
             block_id: block_id,
 
-            red: red,
-            green: green,
-            blue: blue,
+            hsv: hsv,
 
             selected: false,
             locked: false,
         }
     }
+
+    pub fn change_color(&mut self, hue: f32, sat: f32, val: f32) {
+        let new_hue = RgbHue::from_degrees(hue);
+        let hsv: Hsv = Hsv::new(new_hue, sat, val);
+
+        self.hsv = hsv;
+    }
 }
 
 impl Widget for ColorBlock {
     fn render(self, area: Rect, buf: &mut Buffer) {
-        let (red, green, blue) = (self.red, self.green, self.blue);
+        let rgb: Srgb<f32> = Srgb::from_color(self.hsv);
+
+        let red = (rgb.red * 255.0).round() as u8;
+        let green = (rgb.green * 255.0).round() as u8;
+        let blue = (rgb.blue * 255.0).round() as u8;
 
         let mut padding = Padding::new(0, 0, area.height / 2, 0);
         let selected_padding = Padding::new(0, 0, area.height / 2 - 1, 0);
@@ -118,12 +130,12 @@ impl Widget for &mut MainContent {
         for i in 1..block_count + 1 {
             let index = i - 1;
 
-            let mut _block = self.color_blocks[index].unwrap();
+            let mut block = self.color_blocks[index].unwrap();
             if index == self.selected_block_id {
-                _block.selected = true;
+                block.selected = true;
             }
 
-            _block.render(layout[index], buf);
+            block.render(layout[index], buf);
         }
     }
 }

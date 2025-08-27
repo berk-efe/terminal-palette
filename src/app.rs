@@ -146,9 +146,11 @@ impl App {
     fn generate_analogous(&mut self) {
         fn generate_random_color(block: &mut ColorBlock) {
             let mut rng = rand::rng();
-            block.red = rng.random_range(0..255);
-            block.green = rng.random_range(0..255);
-            block.blue = rng.random_range(0..255);
+            let hue = rng.random_range(0..360);
+            let sat = rng.random_range(60..90); // GONNA EDIT THESE LATER
+            let val = rng.random_range(60..90);
+
+            block.change_color(hue as f32, sat as f32 / 100.0, val as f32 / 100.0);
         }
 
         let mut rng = rand::rng();
@@ -161,43 +163,35 @@ impl App {
             .cloned()
             .collect();
 
-        let mut last_red: u8 = 0;
-        let mut last_green: u8 = 0;
-        let mut last_blue: u8 = 0;
+        let mut last_hue_as_deg: f32 = 0.0;
 
-        let rand_rate = 20;
+        let rand_rate = 60;
 
         if locked_blocks.len() > 0 {
-            let mut _red: u8 = 0;
-            let mut _green: u8 = 0;
-            let mut _blue: u8 = 0;
+            let mut hue_as_deg: f32 = 0.0;
 
             for block in locked_blocks.iter() {
                 let block = block.unwrap();
-                _red = (_red as u16 + block.red as u16).clamp(1, 255) as u8;
-                _green = (_green as u16 + block.green as u16).clamp(1, 255) as u8;
-                _blue = (_blue as u16 + block.blue as u16).clamp(1, 255) as u8;
+
+                hue_as_deg += block.hsv.hue.into_degrees() as f32;
             }
 
-            last_red = _red / locked_blocks.len() as u8;
-            last_green = _green / locked_blocks.len() as u8;
-            last_blue = _blue / locked_blocks.len() as u8;
+            last_hue_as_deg = hue_as_deg / locked_blocks.len() as f32;
 
             for block in self.color_blocks.iter_mut() {
                 if let Some(color_block) = block {
                     if !color_block.locked {
-                        let randomness: i8 = rng.random_range(-rand_rate..rand_rate);
-                        color_block.red =
-                            (last_red as i16 + randomness as i16).clamp(15, 245) as u8;
-                        last_red = color_block.red;
+                        let randomness = rng.random_range(0..rand_rate);
 
-                        color_block.green =
-                            (last_green as i16 + randomness as i16).clamp(15, 245) as u8;
-                        last_green = color_block.green;
+                        let new_hue_as_deg: f32 = last_hue_as_deg + randomness as f32;
 
-                        color_block.blue =
-                            (last_blue as i16 + randomness as i16).clamp(15, 245) as u8;
-                        last_blue = color_block.blue;
+                        color_block.change_color(
+                            new_hue_as_deg,
+                            color_block.hsv.saturation,
+                            color_block.hsv.value,
+                        );
+
+                        last_hue_as_deg = new_hue_as_deg;
                     }
                 }
             }
@@ -206,20 +200,25 @@ impl App {
                 if let Some(color_block) = block {
                     if i == 0 {
                         generate_random_color(color_block);
-                        last_red = color_block.red;
-                        last_green = color_block.green;
-                        last_blue = color_block.blue;
+                        last_hue_as_deg = color_block.hsv.hue.into_degrees();
+                        color_block.change_color(
+                            last_hue_as_deg,
+                            color_block.hsv.saturation,
+                            color_block.hsv.value,
+                        );
                     } else {
-                        let randomness: i8 = rng.random_range(-rand_rate..rand_rate);
-                        color_block.red =
-                            (last_red as i16 + randomness as i16).clamp(15, 245) as u8;
-                        last_red = color_block.red;
-                        color_block.green =
-                            (last_green as i16 + randomness as i16).clamp(15, 245) as u8;
-                        last_green = color_block.green;
-                        color_block.blue =
-                            (last_blue as i16 + randomness as i16).clamp(15, 245) as u8;
-                        last_blue = color_block.blue;
+                        let randomness = rng.random_range(0..rand_rate);
+                        let new_hue_as_degrees: f32 = last_hue_as_deg + randomness as f32;
+                        let new_sat: f32 = rng.random_range(50..80) as f32;
+                        let new_val: f32 = rng.random_range(50..80) as f32;
+
+                        color_block.change_color(
+                            new_hue_as_degrees,
+                            new_sat / 100.0,
+                            new_val / 100.0,
+                        );
+
+                        last_hue_as_deg = new_hue_as_degrees;
                     }
                 }
             }
@@ -257,7 +256,7 @@ impl Default for App {
         let mut color_blocks: [Option<ColorBlock>; 9] = [None; 9];
 
         for i in 1..color_block_count + 1 {
-            color_blocks[i - 1] = Some(ColorBlock::new(i, 0, 0, 0));
+            color_blocks[i - 1] = Some(ColorBlock::new(i, 0.0, 0.0, 0.0));
         }
 
         Self {
