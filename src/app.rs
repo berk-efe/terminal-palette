@@ -116,7 +116,7 @@ impl App {
 
                 (KeyCode::Char(' '), _) => match self.current_color_theory {
                     ColorTheories::Analogous => self.generate_analogous(),
-                    ColorTheories::Complementary => todo!(),
+                    ColorTheories::Complementary => self.generate_complementary(),
                 },
 
                 _ => {}
@@ -135,6 +135,7 @@ impl App {
                     if let Some(selected) = self.theory_selector_state.selected() {
                         let theories: Vec<ColorTheories> = ColorTheories::iter().collect();
                         self.current_color_theory = theories[selected];
+                        self.current_page = CurrentPage::Main;
                     }
                 }
 
@@ -143,31 +144,81 @@ impl App {
         }
     }
 
-    fn generate_analogous(&mut self) {
-        let mut rng = rand::rng();
-
-        let locked_blocks: Vec<Option<ColorBlock>> = self
-            .color_blocks
+    fn get_locked_blocks(&mut self) -> Vec<Option<ColorBlock>> {
+        self.color_blocks
             .iter()
             .filter(|block| block.is_some())
             .filter(|block| block.unwrap().locked)
             .cloned()
-            .collect();
+            .collect()
+    }
+
+    fn generate_complementary(&mut self) {
+        let mut rng = rand::rng();
+        let locked_blocks = self.get_locked_blocks();
 
         let mut last_hue_as_deg: f32 = 0.0;
+        let rand_rate = 60; // GONNA MAKE THIS INTO A GLOBAL CONS
 
+        if locked_blocks.len() > 0 {
+            last_hue_as_deg = ColorBlock::get_avg_hue(locked_blocks);
+
+            for block in self.color_blocks.iter_mut() {
+                if let Some(color_block) = block {
+                    if !color_block.locked {
+                        let randomness = rng.random_range(-rand_rate..rand_rate);
+
+                        let new_hue_as_deg: f32 = last_hue_as_deg + 180.0 + randomness as f32;
+
+                        color_block.change_color(
+                            new_hue_as_deg,
+                            color_block.hsv.saturation,
+                            color_block.hsv.value,
+                        );
+                        last_hue_as_deg = new_hue_as_deg;
+                    }
+                }
+            }
+        } else {
+            for (i, block) in self.color_blocks.iter_mut().enumerate() {
+                if let Some(color_block) = block {
+                    if i == 0 {
+                        color_block.generate_random_color();
+                        last_hue_as_deg = color_block.hsv.hue.into_degrees();
+                        color_block.change_color(
+                            last_hue_as_deg,
+                            color_block.hsv.saturation,
+                            color_block.hsv.value,
+                        );
+                    } else {
+                        let randomness = rng.random_range(-rand_rate..rand_rate);
+                        let new_hue_as_degrees: f32 = last_hue_as_deg + 180.0 + randomness as f32;
+                        let new_sat: f32 = rng.random_range(50..80) as f32;
+                        let new_val: f32 = rng.random_range(50..80) as f32;
+
+                        color_block.change_color(
+                            new_hue_as_degrees,
+                            new_sat / 100.0,
+                            new_val / 100.0,
+                        );
+
+                        last_hue_as_deg = new_hue_as_degrees;
+                    }
+                }
+            }
+        }
+    }
+
+    fn generate_analogous(&mut self) {
+        let mut rng = rand::rng();
+
+        let locked_blocks = self.get_locked_blocks();
+
+        let mut last_hue_as_deg: f32 = 0.0;
         let rand_rate = 60;
 
         if locked_blocks.len() > 0 {
-            let mut hue_as_deg: f32 = 0.0;
-
-            for block in locked_blocks.iter() {
-                let block = block.unwrap();
-
-                hue_as_deg += block.hsv.hue.into_degrees() as f32;
-            }
-
-            last_hue_as_deg = hue_as_deg / locked_blocks.len() as f32;
+            last_hue_as_deg = ColorBlock::get_avg_hue(locked_blocks);
 
             for block in self.color_blocks.iter_mut() {
                 if let Some(color_block) = block {

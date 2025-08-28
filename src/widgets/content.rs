@@ -51,6 +51,19 @@ impl ColorBlock {
 
         self.hsv = hsv;
     }
+
+    pub fn get_avg_hue(blocks: Vec<Option<ColorBlock>>) -> f32 {
+        let mut hue_as_deg: f32 = 0.0;
+
+        for block in blocks.iter() {
+            let block = block.unwrap();
+
+            hue_as_deg += block.hsv.hue.into_degrees() as f32;
+        }
+
+        //return
+        hue_as_deg / blocks.len() as f32
+    }
 }
 
 impl Widget for ColorBlock {
