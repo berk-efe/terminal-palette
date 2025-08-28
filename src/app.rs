@@ -144,15 +144,6 @@ impl App {
     }
 
     fn generate_analogous(&mut self) {
-        fn generate_random_color(block: &mut ColorBlock) {
-            let mut rng = rand::rng();
-            let hue = rng.random_range(0..360);
-            let sat = rng.random_range(60..90); // GONNA EDIT THESE LATER
-            let val = rng.random_range(60..90);
-
-            block.change_color(hue as f32, sat as f32 / 100.0, val as f32 / 100.0);
-        }
-
         let mut rng = rand::rng();
 
         let locked_blocks: Vec<Option<ColorBlock>> = self
@@ -199,7 +190,7 @@ impl App {
             for (i, block) in self.color_blocks.iter_mut().enumerate() {
                 if let Some(color_block) = block {
                     if i == 0 {
-                        generate_random_color(color_block);
+                        color_block.generate_random_color();
                         last_hue_as_deg = color_block.hsv.hue.into_degrees();
                         color_block.change_color(
                             last_hue_as_deg,

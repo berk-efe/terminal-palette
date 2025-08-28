@@ -1,3 +1,5 @@
+use rand::Rng;
+
 use ratatui::{
     buffer::Buffer,
     layout::{Alignment, Constraint, Direction, Layout, Rect},
@@ -32,6 +34,15 @@ impl ColorBlock {
             selected: false,
             locked: false,
         }
+    }
+
+    pub fn generate_random_color(&mut self) {
+        let mut rng = rand::rng();
+        let hue = rng.random_range(0..360);
+        let sat = rng.random_range(50..90); // MIGHT GONNA EDIT THESE LATER
+        let val = rng.random_range(50..90);
+
+        self.change_color(hue as f32, sat as f32 / 100.0, val as f32 / 100.0);
     }
 
     pub fn change_color(&mut self, hue: f32, sat: f32, val: f32) {
