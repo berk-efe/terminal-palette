@@ -326,17 +326,10 @@ impl Widget for &App {
         // SELECTED BLOCK
         let layout = Layout::default()
             .direction(Direction::Vertical)
-            .constraints(vec![
-                Constraint::Length(3),
-                Constraint::Fill(1),
-                Constraint::Length(3),
-            ])
+            .constraints(vec![Constraint::Fill(1), Constraint::Length(3)])
             .split(area);
 
-        let (header_area, main_area, footer_area) = (layout[0], layout[1], layout[2]);
-
-        let header = Header::new(self.title);
-        header.render(header_area, buf);
+        let (main_area, footer_area) = (layout[0], layout[1]);
 
         let mut main_content = MainContent::new(self.color_blocks, self.selected_block_id);
         main_content.render(main_area, buf);

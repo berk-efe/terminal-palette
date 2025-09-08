@@ -52,6 +52,29 @@ impl ColorBlock {
         self.hsv = hsv;
     }
 
+    pub fn get_rgb_values(&self) -> (u8, u8, u8) {
+        let rgb: Srgb<f32> = Srgb::from_color(self.hsv);
+
+        let red = (rgb.red * 255.0).round() as u8;
+        let green = (rgb.green * 255.0).round() as u8;
+        let blue = (rgb.blue * 255.0).round() as u8;
+
+        return (red, green, blue);
+    }
+
+    pub fn get_hsv_values(&self) -> (f32, f32, f32) {
+        let hue: f32 = self.hsv.hue.into_raw_degrees();
+        let saturation: f32 = self.hsv.saturation;
+        let value: f32 = self.hsv.value;
+
+        return (hue, saturation, value);
+    }
+
+    pub fn get_hex(&self) -> String {
+        let (r, g, b) = self.get_rgb_values();
+        format!("#{r:02X}{g:02X}{b:02X}")
+    }
+
     pub fn get_avg_hue(blocks: Vec<Option<ColorBlock>>) -> f32 {
         let mut hue_as_deg: f32 = 0.0;
 
@@ -68,20 +91,35 @@ impl ColorBlock {
 
 impl Widget for ColorBlock {
     fn render(self, area: Rect, buf: &mut Buffer) {
-        let rgb: Srgb<f32> = Srgb::from_color(self.hsv);
+        let whole = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints(vec![Constraint::Length(1), Constraint::Fill(1)])
+            .split(area);
 
-        let red = (rgb.red * 255.0).round() as u8;
-        let green = (rgb.green * 255.0).round() as u8;
-        let blue = (rgb.blue * 255.0).round() as u8;
+        let mut padding = Padding::new(0, 0, whole[1].height / 2, 0);
+        let selected_padding = Padding::new(0, 0, whole[1].height / 2 - 1, 0);
 
-        let mut padding = Padding::new(0, 0, area.height / 2, 0);
-        let selected_padding = Padding::new(0, 0, area.height / 2 - 1, 0);
+        let (hue, saturation, value) = self.get_hsv_values();
+        let (red, green, blue) = self.get_rgb_values();
 
         let color = Color::Rgb(red, green, blue);
 
         if self.selected {
             padding = selected_padding;
         }
+
+        let mut lock_indicator_color: Color = Color::Rgb(2, 48, 32);
+
+        let mut lock_indicator_label = String::from("UNLOCKED");
+
+        if self.locked {
+            lock_indicator_color = Color::Rgb(139, 0, 0);
+            lock_indicator_label = String::from("LOCKED");
+        }
+
+        let lock_indicator_block = Block::default()
+            .borders(Borders::NONE)
+            .bg(lock_indicator_color);
 
         let mut block = Block::default()
             .borders(Borders::NONE)
@@ -94,28 +132,25 @@ impl Widget for ColorBlock {
             .padding(padding)
             .bg(color);
 
-        let mut locked_text = String::new();
-        if self.locked {
-            locked_text = String::from("Locked")
-        } else {
-            locked_text = String::from("Unlocked")
-        }
-
         if self.selected {
             block = selected_block;
         }
 
         Paragraph::new(vec![
+            Line::from(format!("HSV: {hue}, {saturation}, {value}")),
             Line::from(format!("RGB: {red}, {green}, {blue}")),
-            Line::from(""),
-            Line::from(locked_text),
-            Line::from(format!("(toggle with ALT+{})", self.block_id)),
+            Line::from(self.get_hex()),
             Line::from(""),
             Line::from(format!("ID: {}", self.block_id)),
         ])
         .block(block)
         .alignment(Alignment::Center)
-        .render(area, buf);
+        .render(whole[1], buf);
+
+        Paragraph::new(Line::from(lock_indicator_label))
+            .block(lock_indicator_block)
+            .alignment(Alignment::Center)
+            .render(whole[0], buf);
     }
 }
 
