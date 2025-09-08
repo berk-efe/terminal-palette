@@ -13,8 +13,9 @@ use ratatui::{
 use strum::IntoEnumIterator;
 use strum_macros::EnumIter;
 
+use arboard::Clipboard;
+
 use crate::widgets::content::{ColorBlock, MainContent};
-use crate::widgets::header::Header;
 use crate::widgets::status_bar::StatusBar;
 
 #[derive(Debug, PartialEq)]
@@ -29,9 +30,10 @@ pub enum ColorTheories {
     Complementary,
 }
 
-#[derive(Debug)]
 pub struct App {
     pub counter: i8,
+
+    pub clipboard: Clipboard,
 
     pub theory_selector_state: ListState,
     pub current_page: CurrentPage,
@@ -104,9 +106,21 @@ impl App {
                 (KeyCode::Left, _) => self.decrement_counter(),
                 (KeyCode::Right, _) => self.increment_counter(),
 
-                (KeyCode::Char('c'), _) => {
+                (KeyCode::Char('x'), _) => {
                     self.theory_selector_state.select_first();
                     self.current_page = CurrentPage::TheorySelector
+                }
+
+                (KeyCode::Char('l'), _) => {
+                    if let Some(block) = self.color_blocks[self.selected_block_id].as_mut() {
+                        block.locked = !block.locked;
+                    }
+                }
+
+                (KeyCode::Char('c'), _) => {
+                    self.clipboard
+                        .set_text(self.color_blocks[self.selected_block_id].unwrap().get_hex())
+                        .unwrap();
                 }
 
                 (KeyCode::Char(c), KeyModifiers::ALT) if ('1'..='9').contains(&c) => {
@@ -290,6 +304,12 @@ impl App {
             color_block.locked = !color_block.locked;
         });
     }
+
+    fn generate_blocks(&mut self) {}
+
+    fn add_block(&mut self) {}
+
+    fn del_block(&mut self) {}
 }
 
 impl Default for App {
@@ -303,6 +323,8 @@ impl Default for App {
 
         Self {
             counter: 0,
+
+            clipboard: Clipboard::new().unwrap(),
 
             theory_selector_state: ListState::default(),
             current_page: CurrentPage::Main,
