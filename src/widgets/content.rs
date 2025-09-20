@@ -184,7 +184,6 @@ impl Widget for ColorBlock {
             Line::from(format!("RGB: {red}, {green}, {blue}")),
             Line::from(self.get_hex()),
             Line::from(""),
-            Line::from(format!("ID: {}", self.block_id)),
         ])
         .block(block)
         .alignment(Alignment::Center)

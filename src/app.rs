@@ -153,6 +153,7 @@ impl App {
                 (KeyCode::Left, _) => self.decrement_counter(),
                 (KeyCode::Right, _) => self.increment_counter(),
 
+                (KeyCode::Char('a'), _) if self.color_block_count < 9 => self.add_block(),
                 (KeyCode::Char('d'), _) if self.color_block_count > 3 => self.del_block(),
 
                 (KeyCode::Char('x'), _) => {
@@ -390,9 +391,12 @@ impl App {
         });
     }
 
-    fn generate_blocks(&mut self) {}
-
-    fn add_block(&mut self) {}
+    fn add_block(&mut self) {
+        if let Some(idx) = self.color_blocks.iter().position(|x| x.is_none()) {
+            self.color_blocks[idx] = Some(ColorBlock::new(idx, 0 as f32, 0 as f32, 0 as f32));
+            self.color_block_count += 1;
+        }
+    }
 
     fn del_block(&mut self) {
         self.color_blocks[self.selected_block_id] = None;
