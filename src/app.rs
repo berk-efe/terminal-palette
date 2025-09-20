@@ -153,6 +153,8 @@ impl App {
                 (KeyCode::Left, _) => self.decrement_counter(),
                 (KeyCode::Right, _) => self.increment_counter(),
 
+                (KeyCode::Char('d'), _) if self.color_block_count > 3 => self.del_block(),
+
                 (KeyCode::Char('x'), _) => {
                     self.theory_selector_state.select_first();
                     self.current_page = CurrentPage::TheorySelector
@@ -392,7 +394,11 @@ impl App {
 
     fn add_block(&mut self) {}
 
-    fn del_block(&mut self) {}
+    fn del_block(&mut self) {
+        self.color_blocks[self.selected_block_id] = None;
+        self.color_block_count -= 1;
+        self.selected_block_id = 0;
+    }
 }
 
 impl Default for App {

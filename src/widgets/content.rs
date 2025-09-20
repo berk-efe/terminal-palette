@@ -213,31 +213,26 @@ impl MainContent {
 
 impl Widget for &mut MainContent {
     fn render(self, area: Rect, buf: &mut Buffer) {
-        let block_count = self
-            .color_blocks
-            .iter()
-            .filter(|block| block.is_some())
-            .count();
-        let mut constraints: Vec<Constraint> = Vec::new();
+        let block_count = self.color_blocks.iter().filter(|b| b.is_some()).count();
 
-        for _ in 1..block_count + 1 {
-            constraints.push(Constraint::Fill(1));
-        }
+        let constraints: Vec<Constraint> = vec![Constraint::Fill(1); block_count];
 
         let layout = Layout::default()
             .direction(Direction::Horizontal)
             .constraints(constraints)
             .split(area);
 
-        for i in 1..block_count + 1 {
-            let index = i - 1;
+        for (idx, block) in self
+            .color_blocks
+            .iter_mut()
+            .filter_map(|maybe| maybe.as_mut())
+            .enumerate()
+        {
+            // Mark selection
+            block.selected = idx == self.selected_block_id;
 
-            let mut block = self.color_blocks[index].unwrap();
-            if index == self.selected_block_id {
-                block.selected = true;
-            }
-
-            block.render(layout[index], buf);
+            // Render into its packed layout slot
+            block.render(layout[idx], buf);
         }
     }
 }
