@@ -1,5 +1,6 @@
 use std::io;
 
+use palette::Hsv;
 use rand::Rng;
 
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
@@ -7,7 +8,9 @@ use ratatui::{
     DefaultTerminal, Frame,
     buffer::Buffer,
     layout::{Constraint, Direction, Layout, Rect},
-    widgets::{Block, BorderType, Borders, Clear, List, ListItem, ListState, Widget},
+    style::{Color, Modifier, Stylize},
+    text::{Line, Span},
+    widgets::{Block, BorderType, Borders, Clear, List, ListItem, ListState, Paragraph, Widget},
 };
 
 use strum::IntoEnumIterator;
@@ -15,13 +18,25 @@ use strum_macros::EnumIter;
 
 use arboard::Clipboard;
 
-use crate::widgets::content::{ColorBlock, MainContent};
-use crate::widgets::status_bar::StatusBar;
+use crate::widgets::{
+    content::{hex2rgb, rgb2hsv},
+    status_bar::StatusBar,
+};
+use crate::{
+    margin,
+    widgets::content::{ColorBlock, MainContent},
+};
+
+pub const HEX_CHARS: [char; 22] = [
+    'a', 'b', 'c', 'd', 'e', 'f', 'A', 'B', 'C', 'D', 'E', 'F', '0', '1', '2', '3', '4', '5', '6',
+    '7', '8', '9',
+];
 
 #[derive(Debug, PartialEq)]
 pub enum CurrentPage {
     Main,
     TheorySelector,
+    EditColor,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, EnumIter)]
@@ -47,6 +62,8 @@ pub struct App {
 
     pub status_bar_msg: &'static str,
 
+    pub edit_color_field: String,
+
     pub exit: bool,
 }
 
@@ -62,14 +79,15 @@ impl App {
     fn draw(&mut self, frame: &mut Frame) {
         frame.render_widget(&*self, frame.area());
 
+        let popup_area = Rect {
+            x: frame.area().width / 3,
+            y: frame.area().height * 2 / 5,
+            width: frame.area().width / 3,
+            height: frame.area().height / 4,
+        };
+
         if self.current_page == CurrentPage::TheorySelector {
             // SETTINGS POPUP
-            let popup_area = Rect {
-                x: frame.area().width / 4,
-                y: frame.area().height / 3,
-                width: frame.area().width / 2,
-                height: frame.area().height / 3,
-            };
 
             let popup_list_items: Vec<ListItem> = ColorTheories::iter()
                 .map(|t| ListItem::new(format!("{:?}", t)))
@@ -86,6 +104,35 @@ impl App {
 
             frame.render_widget(Clear, popup_area);
             frame.render_stateful_widget(popup_list, popup_area, &mut self.theory_selector_state);
+        } else if self.current_page == CurrentPage::EditColor {
+            let layout = Layout::default()
+                .direction(Direction::Vertical)
+                .constraints(vec![Constraint::Fill(1), Constraint::Fill(1)])
+                .split(popup_area);
+
+            let block = Block::default()
+                .title(" Edit Color ")
+                .borders(Borders::ALL)
+                .border_type(BorderType::Plain);
+
+            frame.render_widget(block, popup_area);
+
+            // DOESNT WORK FOR SOME REASON,
+            // let par_w_blink = Paragraph::new(Line::from(vec![
+            //     Span::from(format!(" > {}", "Hello World")),
+            //     Span::from("█").add_modifier(Modifier::SLOW_BLINK),
+            // ]))
+            // .block(block);
+
+            let (r, g, b) = hex2rgb(&self.edit_color_field);
+
+            let par = Paragraph::new(format!(" Enter HEX: {}", &self.edit_color_field));
+            let overview = Paragraph::new(Line::from("Overview:").add_modifier(Modifier::REVERSED))
+                .block(Block::new().bg(Color::Rgb(r, g, b)));
+
+            frame.render_widget(Clear, popup_area.inner(margin!(1, 1)));
+            frame.render_widget(par, layout[0].inner(margin!(1, 1)));
+            frame.render_widget(overview, layout[1].inner(margin!(1, 1)));
         }
     }
 
@@ -109,6 +156,10 @@ impl App {
                 (KeyCode::Char('x'), _) => {
                     self.theory_selector_state.select_first();
                     self.current_page = CurrentPage::TheorySelector
+                }
+
+                (KeyCode::Char('z'), _) => {
+                    self.current_page = CurrentPage::EditColor;
                 }
 
                 (KeyCode::Char('l'), _) => {
@@ -136,7 +187,7 @@ impl App {
                 _ => {}
             },
             CurrentPage::TheorySelector => match (key_event.code, key_event.modifiers) {
-                (KeyCode::Char('c'), _) | (KeyCode::Char('q'), _) => {
+                (KeyCode::Char('x'), _) | (KeyCode::Char('q'), _) | (KeyCode::Esc, _) => {
                     self.current_page = CurrentPage::Main
                 }
 
@@ -150,6 +201,38 @@ impl App {
                         let theories: Vec<ColorTheories> = ColorTheories::iter().collect();
                         self.current_color_theory = theories[selected];
                         self.current_page = CurrentPage::Main;
+                    }
+                }
+
+                _ => {}
+            },
+
+            CurrentPage::EditColor => match (key_event.code, key_event.modifiers) {
+                (KeyCode::Char('z'), _) | (KeyCode::Char('q'), _) => {
+                    self.current_page = CurrentPage::Main
+                }
+
+                (KeyCode::Char(c), _)
+                    if HEX_CHARS.contains(&c) && self.edit_color_field.len() < 6 =>
+                {
+                    self.edit_color_field.push(c);
+                }
+
+                // doesnt work gonna look later
+                (KeyCode::Backspace, KeyModifiers::CONTROL) => {
+                    self.edit_color_field = String::new();
+                }
+
+                (KeyCode::Backspace, _) => {
+                    self.edit_color_field.pop();
+                }
+
+                (KeyCode::Enter, _) => {
+                    if let Some(block) = self.color_blocks[self.selected_block_id].as_mut() {
+                        let (r, g, b) = hex2rgb(&self.edit_color_field);
+                        let (h, s, v) = rgb2hsv(r, g, b);
+                        block.hsv = Hsv::new(h, s, v);
+                        self.edit_color_field = String::new();
                     }
                 }
 
@@ -337,6 +420,8 @@ impl Default for App {
             color_blocks: color_blocks,
 
             status_bar_msg: "",
+
+            edit_color_field: String::new(),
 
             exit: false,
         }

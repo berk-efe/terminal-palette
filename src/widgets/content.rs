@@ -11,6 +11,49 @@ use ratatui::{
 
 use palette::{FromColor, Hsv, RgbHue, Srgb};
 
+pub fn hex2rgb(hex: &str) -> (u8, u8, u8) {
+    let mut hex_owned = hex.to_string();
+    hex_owned.push_str("000000");
+    let padded = &hex_owned[..6];
+
+    let r = u8::from_str_radix(&padded[0..2], 16).unwrap();
+    let g = u8::from_str_radix(&padded[2..4], 16).unwrap();
+    let b = u8::from_str_radix(&padded[4..6], 16).unwrap();
+
+    (r, g, b)
+}
+
+pub fn rgb2hsv(r: u8, g: u8, b: u8) -> (f32, f32, f32) {
+    let r = r as f32 / 255.0;
+    let g = g as f32 / 255.0;
+    let b = b as f32 / 255.0;
+
+    let max = r.max(g).max(b);
+    let min = r.min(g).min(b);
+    let delta = max - min;
+
+    // Hue
+    let h = if delta == 0.0 {
+        0.0
+    } else if max == r {
+        60.0 * (((g - b) / delta) % 6.0)
+    } else if max == g {
+        60.0 * (((b - r) / delta) + 2.0)
+    } else {
+        60.0 * (((r - g) / delta) + 4.0)
+    };
+
+    let h = if h < 0.0 { h + 360.0 } else { h };
+
+    // Saturation
+    let s = if max == 0.0 { 0.0 } else { delta / max };
+
+    // Value
+    let v = max;
+
+    (h, s, v)
+}
+
 #[derive(Clone, Copy, Debug)]
 pub struct ColorBlock {
     pub block_id: usize,
