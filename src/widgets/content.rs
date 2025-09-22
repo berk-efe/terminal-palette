@@ -180,7 +180,7 @@ impl Widget for ColorBlock {
         }
 
         Paragraph::new(vec![
-            Line::from(format!("HSV: {hue}, {saturation}, {value}")),
+            Line::from(format!("HSV: {hue}, {:.2}, {:.2}", saturation, value)),
             Line::from(format!("RGB: {red}, {green}, {blue}")),
             Line::from(self.get_hex()),
             Line::from(""),
