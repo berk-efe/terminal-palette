@@ -118,7 +118,7 @@ impl ColorBlock {
         format!("#{r:02X}{g:02X}{b:02X}")
     }
 
-    pub fn get_avg_hue(blocks: Vec<Option<ColorBlock>>) -> f32 {
+    pub fn get_avg_hue(blocks: &Vec<Option<ColorBlock>>) -> f32 {
         let mut hue_as_deg: f32 = 0.0;
 
         for block in blocks.iter() {
