@@ -43,8 +43,8 @@ pub enum CurrentPage {
 pub enum ColorTheories {
     Analogous,
     Complementary,
-    // demo
-    Shades,
+    Triad,
+    Square,
 }
 
 pub struct App {
@@ -187,7 +187,8 @@ impl App {
                 (KeyCode::Char(' '), _) => match self.current_color_theory {
                     ColorTheories::Analogous => self.generate_analogous(),
                     ColorTheories::Complementary => self.generate_complementary(),
-                    ColorTheories::Shades => self.generate_shades(),
+                    ColorTheories::Triad => self.generate_triad(),
+                    ColorTheories::Square => self.generate_square(),
                 },
 
                 _ => {}
@@ -256,8 +257,99 @@ impl App {
             .collect()
     }
 
-    fn generate_shades(&mut self) {
-        todo!()
+    fn generate_square(&mut self) {
+        let mut rng = rand::rng();
+        let locked_blocks = self.get_locked_blocks();
+        let mut base_hue: f32 = 0.0;
+        let rand_rate = 8; // Lower randomness for cleaner square relationships
+
+        if !locked_blocks.is_empty() {
+            base_hue = ColorBlock::get_avg_hue(&locked_blocks);
+        } else {
+            // Generate initial random color for first block
+            if let Some(color_block) = self.color_blocks[0].as_mut() {
+                color_block.generate_random_color();
+                base_hue = color_block.hsv.hue.into_degrees();
+            }
+        }
+
+        for (i, block) in self.color_blocks.iter_mut().enumerate() {
+            if let Some(color_block) = block {
+                if !color_block.locked {
+                    let randomness = rng.random_range(-rand_rate..rand_rate) as f32;
+
+                    // Create square colors: base, base+90°, base+180°, base+270°
+                    let new_hue = match i % 4 {
+                        0 => (base_hue + randomness) % 360.0,         // Primary
+                        1 => (base_hue + 90.0 + randomness) % 360.0,  // First square
+                        2 => (base_hue + 180.0 + randomness) % 360.0, // Complement
+                        3 => (base_hue + 270.0 + randomness) % 360.0, // Second square
+                        _ => unreachable!(),
+                    };
+
+                    let new_sat = if locked_blocks.is_empty() {
+                        rng.random_range(55..80) as f32 / 100.0 // Balanced saturation for square harmony
+                    } else {
+                        color_block.hsv.saturation
+                    };
+
+                    let new_val = if locked_blocks.is_empty() {
+                        rng.random_range(50..75) as f32 / 100.0
+                    } else {
+                        color_block.hsv.value
+                    };
+
+                    color_block.change_color(new_hue, new_sat, new_val);
+                }
+            }
+        }
+    }
+
+    fn generate_triad(&mut self) {
+        let mut rng = rand::rng();
+        let locked_blocks = self.get_locked_blocks();
+        let mut base_hue: f32 = 0.0;
+        let rand_rate = 8; // Lower randomness for cleaner triadic relationships
+
+        if !locked_blocks.is_empty() {
+            base_hue = ColorBlock::get_avg_hue(&locked_blocks);
+        } else {
+            // Generate initial random color for first block
+            if let Some(color_block) = self.color_blocks[0].as_mut() {
+                color_block.generate_random_color();
+                base_hue = color_block.hsv.hue.into_degrees();
+            }
+        }
+
+        for (i, block) in self.color_blocks.iter_mut().enumerate() {
+            if let Some(color_block) = block {
+                if !color_block.locked {
+                    let randomness = rng.random_range(-rand_rate..rand_rate) as f32;
+
+                    // Create triadic colors: base, base+120°, base+240°
+                    let new_hue = match i % 3 {
+                        0 => (base_hue + randomness) % 360.0,         // Primary
+                        1 => (base_hue + 120.0 + randomness) % 360.0, // First triad
+                        2 => (base_hue + 240.0 + randomness) % 360.0, // Second triad
+                        _ => unreachable!(),
+                    };
+
+                    let new_sat = if locked_blocks.is_empty() {
+                        rng.random_range(60..85) as f32 / 100.0 // Slightly higher saturation for vibrant triads
+                    } else {
+                        color_block.hsv.saturation
+                    };
+
+                    let new_val = if locked_blocks.is_empty() {
+                        rng.random_range(55..80) as f32 / 100.0
+                    } else {
+                        color_block.hsv.value
+                    };
+
+                    color_block.change_color(new_hue, new_sat, new_val);
+                }
+            }
+        }
     }
 
     fn generate_complementary(&mut self) {
